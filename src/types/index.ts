@@ -29,3 +29,10 @@ export class GenerationError extends Error {
     this.name = 'GenerationError';
   }
 }
+
+export class RateLimitError extends GenerationError {
+  constructor(message: string, public retryAfterSeconds: number) {
+    super(message);
+    this.name = 'RateLimitError';
+  }
+}

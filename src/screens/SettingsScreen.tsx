@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, gradients, radius } from '../theme/colors';
 import { GlassCard } from '../components/GlassCard';
 import { useSettings } from '../context/SettingsContext';
+import { useTabBarHeight } from '../navigation/tabBarMetrics';
 import { AspectRatio, ArtStyle } from '../types';
 
 const RATIOS: AspectRatio[] = ['1:1', '3:4', '16:9'];
@@ -13,6 +14,7 @@ const STYLES: ArtStyle[] = ['Photo', 'Cinématique', 'Anime', '3D', 'Peinture'];
 
 export function SettingsScreen() {
   const { aspectRatio, style, setAspectRatio, setStyle } = useSettings();
+  const tabBarHeight = useTabBarHeight();
 
   const select = (action: () => void) => {
     Haptics.selectionAsync().catch(() => {});
@@ -22,7 +24,7 @@ export function SettingsScreen() {
   return (
     <LinearGradient colors={gradients.background} style={styles.flex}>
       <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 32 + tabBarHeight }]}>
           <Text style={styles.title}>Paramètres</Text>
 
           <GlassCard style={styles.section}>

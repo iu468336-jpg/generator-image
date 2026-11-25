@@ -1,5 +1,5 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import { AspectRatio, ArtStyle, GenerationError, GenerationOptions, GenerationResult } from '../types';
+import { AspectRatio, ArtStyle, GenerationError, GenerationOptions, GenerationResult, RateLimitError } from '../types';
 
 const STYLE_KEYWORDS: Record<ArtStyle, string> = {
   Photo: 'photorealistic, realistic photography',
@@ -19,6 +19,16 @@ const ASPECT_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> 
 
 const MAX_ATTEMPTS = 2;
 const TIMEOUT_MS = 90_000;
+export const POLLINATIONS_COOLDOWN_MS = 46_000;
+
+export function isUsingPollinations(): boolean {
+  return !process.env.EXPO_PUBLIC_REPLICATE_KEY;
+}
+
+function extractHttpStatus(message: string): number | null {
+  const match = message.match(/\b(4\d{2}|5\d{2})\b/);
+  return match ? parseInt(match[1], 10) : null;
+}
 
 export function enhancePrompt(prompt: string, style: ArtStyle): string {
   const trimmed = prompt.trim();
@@ -52,6 +62,17 @@ async function downloadImage(remoteUrl: string): Promise<string> {
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new GenerationError("Le téléchargement de l'image a pris trop de temps. Vérifiez votre connexion.");
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    const status = extractHttpStatus(message);
+    if (status === 402) {
+      throw new RateLimitError(
+        'Limite gratuite atteinte : le service de génération gratuit autorise 1 image toutes les 45 secondes. Veuillez patienter.',
+        46
+      );
+    }
+    if (status === 429) {
+      throw new RateLimitError('Trop de requêtes envoyées. Veuillez patienter quelques secondes avant de réessayer.', 20);
     }
     throw new GenerationError("Le serveur de génération n'a pas pu être contacté. Réessayez.");
   } finally {
@@ -162,12 +183,18 @@ export async function generateImage(options: GenerationOptions): Promise<Generat
       return await generateWithPollinations(enhanced, options.aspectRatio);
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+      if (lastError instanceof RateLimitError) {
+        break;
+      }
       if (attempt < MAX_ATTEMPTS) {
         await delay(1500);
       }
     }
   }
 
+  if (lastError instanceof GenerationError) {
+    throw lastError;
+  }
   throw new GenerationError(
     lastError?.message ?? "Impossible de générer l'image. Vérifiez votre connexion internet et réessayez."
   );

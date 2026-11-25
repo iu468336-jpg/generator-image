@@ -13,6 +13,7 @@ import { loadCreations } from '../services/storage';
 import { saveImageToGallery } from '../services/download';
 import { Creation } from '../types';
 import { MainTabsParamList, RootStackParamList } from '../navigation/types';
+import { useTabBarHeight } from '../navigation/tabBarMetrics';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabsParamList, 'Gallery'>,
@@ -22,6 +23,7 @@ type Props = CompositeScreenProps<
 export function GalleryScreen({ navigation }: Props) {
   const [creations, setCreations] = useState<Creation[]>([]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const tabBarHeight = useTabBarHeight();
 
   useFocusEffect(
     useCallback(() => {
@@ -53,7 +55,7 @@ export function GalleryScreen({ navigation }: Props) {
             data={creations}
             keyExtractor={(item) => item.id}
             numColumns={2}
-            contentContainerStyle={styles.grid}
+            contentContainerStyle={[styles.grid, { paddingBottom: 16 + (mostRecent ? 0 : tabBarHeight) }]}
             columnWrapperStyle={styles.column}
             renderItem={({ item }) => (
               <Pressable style={styles.thumbWrapper} onPress={() => navigation.navigate('Preview', { creation: item })}>
@@ -71,7 +73,7 @@ export function GalleryScreen({ navigation }: Props) {
         )}
 
         {mostRecent ? (
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: 16 + tabBarHeight }]}>
             <GradientButton label="Télécharger" onPress={() => handleQuickDownload(mostRecent)} />
           </View>
         ) : null}

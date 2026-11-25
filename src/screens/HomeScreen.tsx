@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,22 +19,37 @@ import { GradientButton } from '../components/GradientButton';
 import { GradientBorder } from '../components/GradientBorder';
 import { StarsField } from '../components/StarsField';
 import { ShimmerSkeleton } from '../components/ShimmerSkeleton';
-import { generateImage } from '../services/imageGeneration';
+import { generateImage, isUsingPollinations, POLLINATIONS_COOLDOWN_MS } from '../services/imageGeneration';
 import { saveImageToGallery, shareImage } from '../services/download';
 import { addCreation } from '../services/storage';
 import { useSettings } from '../context/SettingsContext';
-import { Creation, GenerationError } from '../types';
+import { useTabBarHeight } from '../navigation/tabBarMetrics';
+import { Creation, GenerationError, RateLimitError } from '../types';
 
 export function HomeScreen() {
   const { aspectRatio, style } = useSettings();
+  const tabBarHeight = useTabBarHeight();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<Creation | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 500);
+    return () => clearInterval(interval);
+  }, [cooldownUntil]);
+
+  const cooldownSeconds = cooldownUntil ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000)) : 0;
+  const isCoolingDown = cooldownSeconds > 0;
 
   const handleGenerate = async () => {
-    if (!prompt.trim() || isGenerating) return;
+    if (!prompt.trim() || isGenerating || isCoolingDown) return;
     setIsGenerating(true);
     setErrorMessage(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
@@ -51,6 +66,9 @@ export function HomeScreen() {
       };
       await addCreation(creation);
       setResult(creation);
+      if (isUsingPollinations()) {
+        setCooldownUntil(Date.now() + POLLINATIONS_COOLDOWN_MS);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch (err) {
       const message =
@@ -58,6 +76,9 @@ export function HomeScreen() {
           ? err.message
           : "Une erreur réseau est survenue. Vérifiez votre connexion internet et réessayez.";
       setErrorMessage(message);
+      if (err instanceof RateLimitError) {
+        setCooldownUntil(Date.now() + err.retryAfterSeconds * 1000);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     } finally {
       setIsGenerating(false);
@@ -125,12 +146,18 @@ export function HomeScreen() {
           <View style={styles.actionsRow}>
             <GradientButton label="Télécharger" onPress={handleDownload} variant="primary" style={styles.actionButton} />
             <GradientButton label="Partager" onPress={handleShare} variant="accent" style={styles.actionButton} />
-            <GradientButton label="Régénérer" onPress={handleRegenerate} variant="primary" style={styles.actionButton} />
+            <GradientButton
+              label={isCoolingDown ? `Patientez ${cooldownSeconds}s` : 'Régénérer'}
+              onPress={handleRegenerate}
+              variant="primary"
+              style={styles.actionButton}
+              disabled={isCoolingDown}
+            />
           </View>
         ) : null}
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.promptRow}>
+          <View style={[styles.promptRow, { paddingBottom: 16 + tabBarHeight }]}>
             <GradientBorder style={styles.promptInputWrapper} borderRadius={radius.pill}>
               <TextInput
                 value={prompt}
@@ -143,10 +170,10 @@ export function HomeScreen() {
               />
             </GradientBorder>
             <GradientButton
-              label="Générer"
+              label={isCoolingDown ? `${cooldownSeconds}s` : 'Générer'}
               onPress={handleGenerate}
               loading={isGenerating}
-              disabled={!prompt.trim()}
+              disabled={!prompt.trim() || isCoolingDown}
               style={styles.generateButton}
             />
           </View>

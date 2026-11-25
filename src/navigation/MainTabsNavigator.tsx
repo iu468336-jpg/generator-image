@@ -3,11 +3,13 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GalleryScreen } from '../screens/GalleryScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { colors } from '../theme/colors';
 import { MainTabsParamList } from './types';
+import { TAB_BAR_BASE_HEIGHT } from './tabBarMetrics';
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
@@ -26,13 +28,15 @@ const LABELS: Record<keyof MainTabsParamList, string> = {
 };
 
 export function MainTabsNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.textPrimary,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { height: TAB_BAR_BASE_HEIGHT + insets.bottom, paddingBottom: 10 + insets.bottom }],
         tabBarBackground: () => <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />,
         tabBarLabel: LABELS[route.name],
         tabBarIcon: ({ color, size }) => <Ionicons name={ICONS[route.name]} color={color} size={size} />,
@@ -51,8 +55,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderTopColor: colors.cardBorder,
     borderTopWidth: 1,
-    height: 64,
     paddingTop: 6,
-    paddingBottom: 10,
   },
 });
