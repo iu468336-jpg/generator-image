@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Generator Image",
+    "slug": "generator-image",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "generatorimage",
+    "backgroundColor": "#0B0620",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0620"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.generatorimage.app"
+    },
+    "android": {
+      "package": "com.generatorimage.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#1A0B3D",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png"
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-image",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Generator Image a besoin d'accéder à vos photos pour enregistrer vos créations.",
+          "savePhotosPermission": "Generator Image souhaite enregistrer vos images générées dans votre galerie.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {}
+    }
+  }
+}
