@@ -1,0 +1,48 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer Java (requis par Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Générer le projet natif Android (expo prebuild)
+        run: npx expo prebuild -p android --clean
+
+      - name: Rendre gradlew exécutable
+        run: chmod +x android/gradlew
+
+      - name: Compiler l'APK (gradle assembleRelease)
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Renommer l'APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk generator-image.apk
+
+      - name: Publier l'APK en artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generator-image.apk
+          path: generator-image.apk
+          retention-days: 30
